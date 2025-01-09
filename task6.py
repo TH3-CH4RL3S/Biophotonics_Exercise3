@@ -63,9 +63,9 @@ def visualize_annotations(image, gt_array, selected_points):
     ax.legend()
     plt.show()
 
-# Example usage
-rgb_image_path = "task4_output_img.png"  # Replace with your reconstructed RGB image
-annotation_file = "HyperBlood/anno/B_1.npz"  # Replace with your annotation file
+# Define the paths to the RGB image and annotation file
+rgb_image_path = "task4_output_img.png"  
+annotation_file = "HyperBlood/anno/B_1.npz"  
 
 # Load the RGB image and ground truth annotations
 rgb_image = plt.imread(rgb_image_path)
