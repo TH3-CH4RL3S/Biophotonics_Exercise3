@@ -1,111 +1,95 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Cursor
-from spectral import envi
+from PIL import Image
 
-# Function to load the ground truth annotations from the .npz file
 def load_annotations(annotation_file):
+    """
+    Load the ground truth annotations from a .npz file.
+    """
     data = np.load(annotation_file)
     gt = data['gt']
     return gt
 
-# Function to simulate reflectance data (for demo purposes)
-def simulate_reflectance(gt_array):
-    height, width = gt_array.shape
-    wavelengths = 100  # Simulating 100 wavelengths
-    reflectance_array = np.zeros((height, width, wavelengths))
-
-    # Assign random spectra for "real blood" and "fake blood" regions
-    for y in range(height):
-        for x in range(width):
-            if gt_array[y, x] == 1:  # Real blood
-                reflectance_array[y, x, :] = np.linspace(0.4, 0.8, wavelengths) + np.random.normal(0, 0.02, wavelengths)
-            elif gt_array[y, x] == 2:  # Fake blood
-                reflectance_array[y, x, :] = np.linspace(0.6, 0.4, wavelengths) + np.random.normal(0, 0.02, wavelengths)
-            else:  # Background or other regions
-                reflectance_array[y, x, :] = np.random.normal(0.5, 0.1, wavelengths)
-
-    return reflectance_array
-
-# Unified visualization and interaction function
-def interactive_visualization(image, gt_array, reflectance_array):
-    fig, (ax_image, ax_spectra) = plt.subplots(1, 2, figsize=(16, 8))
-    fig.suptitle("Interactive Visualization with Reflectance Spectra", fontsize=16)
-
-    # Image and contours
-    ax_image.set_title("Image with Contours")
-    ax_image.imshow(image)
+# Function to allow the user to select two pixels
+def pixel_selection(image, title, gt_array):
+    """
+    Displays an image with annotations and allows the user to select two pixels.
+    """
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.set_title(title)
+    ax.imshow(image)
 
     # Create masks for real and fake blood
     real_blood_mask = (gt_array == 1)
     fake_blood_mask = (gt_array == 2)
 
-    # Plot real blood regions in green using contours
+    # Plot real blood regions in green
     if real_blood_mask.any():
-        ax_image.contour(real_blood_mask, levels=[0.5], colors='green', linewidths=2, label='Real Blood')
+        ax.contour(real_blood_mask, levels=[0.5], colors='green', linewidths=2, label='Real Blood')
 
-    # Plot fake blood regions in blue using contours
+    # Plot fake blood regions in blue
     if fake_blood_mask.any():
-        ax_image.contour(fake_blood_mask, levels=[0.5], colors='blue', linewidths=2, label='Fake Blood')
+        ax.contour(fake_blood_mask, levels=[0.5], colors='blue', linewidths=2, label='Fake Blood')
 
-    # Enable cursor and mouse click event handling
-    cursor = Cursor(ax_image, useblit=True, color='red', linewidth=2)
+    cursor = Cursor(ax, useblit=True, color='red', linewidth=2)
     selected_points = []
-
-    # Reflectance spectra plot
-    ax_spectra.set_title("Reflectance Spectra")
-    ax_spectra.set_xlabel("Wavelength Index")
-    ax_spectra.set_ylabel("Reflectance")
-    ax_spectra.grid(True)
 
     # Function to handle mouse clicks
     def onclick(event):
-        if event.inaxes == ax_image:
+        if event.inaxes == ax:
             x, y = int(event.xdata), int(event.ydata)
             selected_points.append((x, y))
-
-            # Plot selected point on the image
-            ax_image.plot(x, y, 'ro')
+            ax.plot(x, y, 'ro')  # Mark the selected point
             fig.canvas.draw()
 
-            # Update reflectance spectra
-            reflectance = reflectance_array[y, x, :]
-            ax_spectra.plot(reflectance, label=f"Point ({x}, {y})")
-            ax_spectra.legend()
-            fig.canvas.draw()
-
-            # Print selected point for debugging or further use
-            print(f"Selected point: ({x}, {y})")
+            if len(selected_points) == 2:  # Stop after 2 points
+                plt.close(fig)
 
     fig.canvas.mpl_connect('button_press_event', onclick)
 
-    # Add custom legend for image
+    # Add a legend
     from matplotlib.lines import Line2D
     legend_elements = [
         Line2D([0], [0], color='green', lw=2, label='Real Blood'),
         Line2D([0], [0], color='blue', lw=2, label='Fake Blood'),
         Line2D([0], [0], marker='o', color='red', lw=0, markersize=5, label='Selected Point')
     ]
-    ax_image.legend(handles=legend_elements, loc='upper right')
+    ax.legend(handles=legend_elements, loc='upper right')
 
     plt.show()
-
     return selected_points
 
-# Define the paths to the RGB image and ground truth annotations
-rgb_image_path = "task4_output_img.png"  
-annotation_file = "HyperBlood/anno/B_1.npz"  
+# Function to visualize the reflectance spectra of selected pixels
+def visualize_spectra(image, selected_points):
+    """
+    Visualizes the reflectance spectra of the selected pixels.
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.set_title("Intensity Spectra of Selected Pixels")
+    ax.set_xlabel("Spectral Band")
+    ax.set_ylabel("Intensity")
 
-# Load the RGB image and ground truth annotations
-rgb_image = plt.imread(rgb_image_path)
+    for i, (x, y) in enumerate(selected_points):
+        spectra = image[y, x, :]  # Extract all bands for the pixel
+        ax.plot(range(len(spectra)), spectra, marker='o', label=f'Pixel {i+1} ({x}, {y})')
+
+    ax.legend()
+    plt.show()
+
+# Define paths to the image and annotations
+image_path = "task4_output_img.png"  # Path to the PNG file
+annotation_file = "B_1.npz"  # Path to annotations file
+
+# Load the image and annotations
+image = np.array(Image.open(image_path))
 gt_array = load_annotations(annotation_file)
 
-# Simulate reflectance data
-reflectance_array = simulate_reflectance(gt_array)
+# Verify the number of bands
+print(f"Image shape: {image.shape}")
 
-# Show the unified interactive UI
-selected_pixels = interactive_visualization(rgb_image, gt_array, reflectance_array)
+# Step 1: Select two pixels with annotations visualized
+selected_pixels = pixel_selection(image, "Select Two Pixels with Annotations", gt_array)
 
-# Output selected points after UI interaction
-print(f"Final selected points: {selected_pixels}")
+# Step 2: Visualize the reflectance spectra of the selected pixels
+visualize_spectra(image, selected_pixels)
