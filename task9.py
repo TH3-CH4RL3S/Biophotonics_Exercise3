@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Cursor
 from PIL import Image
+import json
 
 def load_annotations(annotation_file):
     """
@@ -128,6 +129,19 @@ def main(image, gt_array, image2, gt_array2):
 
     # Plot collections of spectra
     plot_collections(image2, real_pixels2, fake_pixels2)
+
+    # Combine the pixel lists
+    combined_real_pixels = real_pixels + real_pixels2
+    combined_fake_pixels = fake_pixels + fake_pixels2
+
+    # Save the combined labeled pixels to a JSON file
+    labeled_pixels = {
+        'real_pixels': combined_real_pixels,
+        'fake_pixels': combined_fake_pixels
+    }
+    with open('labeled_pixels.json', 'w') as f:
+        json.dump(labeled_pixels, f)
+
     return real_pixels, fake_pixels, real_pixels2, fake_pixels2
 
 if __name__ == "__main__":
