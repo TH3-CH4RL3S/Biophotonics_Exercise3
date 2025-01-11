@@ -61,11 +61,11 @@ def plot_average_spectra(image1, real_pixels1, fake_pixels1, image2, real_pixels
     plt.show()
 
 # Define paths to the images and annotations
-image_path1 = "task4output_B.png"  # Replace with the first image path
-annotation_file1 = r"HyperBlood\anno\B_1.npz"  # Replace with the first annotation file path
+image_path1 = "task4output_A.png"  # Replace with the first image path
+annotation_file1 = r"HyperBlood\anno\A_1.npz"  # Replace with the first annotation file path
 
-image_path2 = "task4output_D"  # Replace with the second image path
-annotation_file2 = r"HyperBlood\anno\D_1.npz"  # Replace with the second annotation file path
+image_path2 = "task4output_B.png"  # Replace with the second image path
+annotation_file2 = r"HyperBlood\anno\B_1.npz"  # Replace with the second annotation file path
 
 # Load the images and annotations
 image1 = np.array(Image.open(image_path1))
@@ -76,7 +76,7 @@ gt_array2 = load_annotations(annotation_file2)
 
 # Example pixel selections (from task9)
 
-real_pixels1, fake_pixels1, real_pixels2, fake_pixels2 = task9(image1, gt_array1, image2, gt_array2)
+real_pixels, fake_pixels, background_pixels, real_pixels2, fake_pixels2, background_pixels2 = task9(image1, gt_array1, image2, gt_array2, annotation_file1, annotation_file2)
 
 # Plot combined average spectra
-plot_average_spectra(image1, real_pixels1, fake_pixels1, image2, real_pixels2, fake_pixels2)
+plot_average_spectra(image1, real_pixels, fake_pixels, image2, real_pixels2, fake_pixels2)

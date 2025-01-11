@@ -19,6 +19,6 @@ def show_datacube(datacube):
     spectral.view_cube(datacube)
     app.MainLoop()  # Start the wx event loop
 
-output_dir = 'output_images'
+output_dir = 'output_images3'
 datacube = load_spectral_images(output_dir)
 show_datacube(datacube)
