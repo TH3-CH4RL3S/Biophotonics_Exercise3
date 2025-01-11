@@ -78,8 +78,8 @@ def visualize_spectra(image, selected_points):
     plt.show()
 
 # Define paths to the image and annotations
-image_path = "task4_output_img.png"  # Path to the PNG file
-annotation_file = "B_1.npz"  # Path to annotations file
+image_path = "task4output_B.png"  # Path to the PNG file
+annotation_file = r"HyperBlood\anno\B_1.npz"  # Path to annotations file
 
 # Load the image and annotations
 image = np.array(Image.open(image_path))

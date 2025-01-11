@@ -14,7 +14,7 @@ def show_monochrome_images(image, band1, band2):
     plt.show()
 
 # Load the image
-image_path = "task4_output_img.png"  # Path to the PNG file
+image_path = "task4output_B.png"  # Path to the PNG file
 image = np.array(Image.open(image_path))
 
 # Verify the number of bands

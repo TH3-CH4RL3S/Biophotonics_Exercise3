@@ -1,65 +1,56 @@
-import os
-import numpy as np
-from PIL import Image
-import spectral
+from spectral import envi
 import matplotlib.pyplot as plt
+import numpy as np
 
-def hyperspectral_to_rgb(hsi_data, wavelengths, save_path=None):
-    """
-    Converts hyperspectral data to an RGB image using a simplified algorithm.
+# Load the ENVI hyperspectral data
+hdr_file = r'HyperBlood\data\B_1.hdr'  
+data_file = r'HyperBlood\data\B_1.float'
+hsi_cube = envi.open(hdr_file, data_file)
+hsi_data = hsi_cube.load()
 
-    Parameters:
-        hsi_data (numpy.ndarray): Hyperspectral data (H, W, B) where B is the number of bands.
-        wavelengths (list): List of wavelengths corresponding to the bands.
-        save_path (str, optional): Path to save the resulting RGB image. Default is None.
+# Dataset wavelength information (in nanometers)
+wavelengths = np.array(hsi_cube.metadata.get('wavelength', []), dtype=float)
 
-    Returns:
-        numpy.ndarray: RGB image as a NumPy array.
-    """
-    # Define visible spectrum ranges for Red, Green, and Blue
-    red_range = (620, 750)
-    green_range = (495, 570)
-    blue_range = (450, 495)
+# Define target RGB wavelength ranges
 
-    # Initialize RGB channels
-    red_channel = np.zeros(hsi_data.shape[:2])
-    green_channel = np.zeros(hsi_data.shape[:2])
-    blue_channel = np.zeros(hsi_data.shape[:2])
+# These ranges are approximate and can be refined for specific datasets
+red_range = (620, 750)    # nm
+green_range = (495, 570)  # nm
+blue_range = (450, 495)   # nm
 
-    # Assign intensity to each channel based on spectral bands
-    for i, wavelength in enumerate(wavelengths):
-        if red_range[0] <= wavelength <= red_range[1]:
-            red_channel += hsi_data[:, :, i]
-        elif green_range[0] <= wavelength <= green_range[1]:
-            green_channel += hsi_data[:, :, i]
-        elif blue_range[0] <= wavelength <= blue_range[1]:
-            blue_channel += hsi_data[:, :, i]
+# FUNCTION TO GET BAND INDICES
+def get_band_indices(wavelengths, target_range):
+    return [i for i, w in enumerate(wavelengths) if target_range[0] <= w <= target_range[1]]
 
-    # Normalize RGB channels
-    rgb = np.stack([red_channel, green_channel, blue_channel], axis=-1)
-    rgb = rgb / np.max(rgb)  # Normalize to range [0, 1]
+# Get band indices for RGB
+red_bands = get_band_indices(wavelengths, red_range)
+green_bands = get_band_indices(wavelengths, green_range)
+blue_bands = get_band_indices(wavelengths, blue_range)
 
-    # Optionally save the image
-    if save_path:
-        Image.fromarray((rgb * 255).astype(np.uint8)).save(save_path)
+# Average the spectral bands in each range to create R, G, B channels
+def average_bands(hsi_data, band_indices):
+    if not band_indices:
+        raise ValueError("No bands found for the given wavelength range.")
+    return np.mean(hsi_data[:, :, band_indices], axis=-1)
 
-    return rgb
+red_channel = average_bands(hsi_data, red_bands)
+green_channel = average_bands(hsi_data, green_bands)
+blue_channel = average_bands(hsi_data, blue_bands)
 
-output_dir = 'output_images3'
+# Stack the RGB channels
+rgb_image = np.stack([red_channel, green_channel, blue_channel], axis=-1)
 
-# Load the uploaded band images
-band_files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.png')]
+# Normalize to the range [0, 1] for display
+rgb_image = (rgb_image - np.min(rgb_image)) / (np.max(rgb_image) - np.min(rgb_image))
 
-# Read the images and stack them into a 3D array
-bands = [np.array(Image.open(band)) for band in band_files]
-hsi_data = np.stack(bands, axis=-1)
+# Display the RGB image
+plt.figure(figsize=(10, 10))
+plt.title("Reconstructed RGB Image")
+plt.imshow(rgb_image)
+plt.axis('off')
+plt.show()
 
-# Wavelengths for the bands (replace these with actual wavelengths if known)
-example_wavelengths = [450, 500, 550, 600, 650]
-
-# Convert hyperspectral data to RGB
-rgb_image = hyperspectral_to_rgb(hsi_data, example_wavelengths)
-
-# Save and display the RGB image
-output_path = "task11_training.png"
-Image.fromarray((rgb_image * 255).astype(np.uint8)).save(output_path)
+# Save the RGB image
+output_path = "task4output_B.png"
+plt.imsave(output_path, rgb_image)
+print(f"RGB image saved to {output_path}")

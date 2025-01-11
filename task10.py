@@ -61,10 +61,10 @@ def plot_average_spectra(image1, real_pixels1, fake_pixels1, image2, real_pixels
     plt.show()
 
 # Define paths to the images and annotations
-image_path1 = "task4_output_img.png"  # Replace with the first image path
+image_path1 = "task4output_B.png"  # Replace with the first image path
 annotation_file1 = r"HyperBlood\anno\B_1.npz"  # Replace with the first annotation file path
 
-image_path2 = "task9_newscene.png"  # Replace with the second image path
+image_path2 = "task4output_D"  # Replace with the second image path
 annotation_file2 = r"HyperBlood\anno\D_1.npz"  # Replace with the second annotation file path
 
 # Load the images and annotations

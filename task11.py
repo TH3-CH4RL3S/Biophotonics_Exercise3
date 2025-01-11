@@ -9,6 +9,9 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import json
 import spectral
+import seaborn as sns
+from sklearn.metrics import confusion_matrix, classification_report
+import numpy as np
 
 def load_hsi_cube(header_path, data_path=None):
     if data_path:
@@ -57,8 +60,8 @@ def prepare_data(hsi_cube1, real_pixels_1, fake_pixels_1, background_pixels_1, h
     return train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Load the HSI cubes
-header_paths = ['HyperBlood/data/E_1.hdr', 'HyperBlood/data/B_1.hdr']
-data_paths = ['HyperBlood/data/E_1.float', 'HyperBlood/data/B_1.float']
+header_paths = ['HyperBlood/data/E_1.hdr', 'HyperBlood/data/F_1.hdr']
+data_paths = ['HyperBlood/data/E_1.float', 'HyperBlood/data/F_1.float']
 hsi_cubes = [load_hsi_cube(header, data) for header, data in zip(header_paths, data_paths)]
 
 # Load the labeled pixels from the JSON file
@@ -152,8 +155,8 @@ print(f'Accuracy: {accuracy:.4f}')
 print("Evaluation complete!")
 
 # Load a new HSI cube
-new_header_path = 'HyperBlood/data/C_1.hdr'
-new_data_path = 'HyperBlood/data/C_1.float'  # Specify the data file path if needed
+new_header_path = 'HyperBlood/data/A_1.hdr'
+new_data_path = 'HyperBlood/data/A_1.float'  # Specify the data file path if needed
 new_hsi_cube = load_hsi_cube(new_header_path, new_data_path)
 
 # Flatten the new HSI cube for prediction
@@ -197,20 +200,48 @@ print(
 )
 
 # Plot the confusion matrix
-# Define the class labels
-class_labels = ['Fake Blood', 'Real Blood', 'Background']
 
-# Create a custom color map
-cmap = mcolors.ListedColormap(['blue', 'red', 'green'])
-bounds = [0, 1, 2, 3]
-norm = mcolors.BoundaryNorm(bounds, cmap.N)
+# Define the color map and labels
+colors = ['red', 'blue', 'gray']  # Corrected: Ensure 'red' is for Real and 'blue' is for Fake
+class_labels = ['Real Blood', 'Fake Blood', 'Background']
+cmap = mcolors.ListedColormap(colors)
 
-# Visualize the classification result
-plt.figure(figsize=(10, 10))
-plt.imshow(new_predicted_labels, cmap=cmap, norm=norm)
-plt.title('Classification Result')
-cbar = plt.colorbar(ticks=[0.5, 1.5, 2.5])
-cbar.ax.set_yticklabels(class_labels)  # Label the colorbar with class labels
-cbar.set_label('Class Labels')
+# Plot the classified image
+plt.figure(figsize=(10, 6))
+plt.imshow(new_predicted_labels, cmap=cmap, interpolation='nearest')
+cbar = plt.colorbar()
+cbar.set_ticks([0.33, 1, 1.66])  # Place ticks at the center of each color
+cbar.set_ticklabels(class_labels)  # Set labels for the classes
+cbar.set_label('Class')
+
+# Add titles and axes
+plt.title("Predicted Labels for New HSI Cube")
+plt.xlabel("Pixel X")
+plt.ylabel("Pixel Y")
+plt.xticks([])
+plt.yticks([])
 plt.show()
 
+# Plot confusion matrix as a heatmap
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap="Blues", xticklabels=["Fake Blood", "Real Blood", "Background"],
+            yticklabels=["Fake Blood", "Real Blood", "Background"])
+plt.title("Confusion Matrix Heatmap")
+plt.xlabel("Predicted Labels")
+plt.ylabel("True Labels")
+plt.show()
+
+# Optional: Representative Spectra
+fake_spectra_example = X_train[y_train == 0][:1].squeeze()  # Take one example from Fake Blood
+real_spectra_example = X_train[y_train == 1][:1].squeeze()  # Take one example from Real Blood
+background_spectra_example = X_train[y_train == 2][:1].squeeze()  # Take one example from Background
+
+plt.figure(figsize=(10, 6))
+plt.plot(fake_spectra_example, label="Fake Blood", color="blue")
+plt.plot(real_spectra_example, label="Real Blood", color="red")
+plt.plot(background_spectra_example, label="Background", color="gray")
+plt.title("Representative Spectra for Each Class")
+plt.xlabel("Spectral Band")
+plt.ylabel("Reflectance/Intensity")
+plt.legend()
+plt.show()

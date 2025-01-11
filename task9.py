@@ -161,10 +161,10 @@ def main(image, gt_array, image2, gt_array2, annofile1, annofile2):
 
 if __name__ == "__main__":
     # Define paths to the new scene image and annotations
-    image_path = "task11_training.png" 
-    image_path2 = "task4_output_img.png"  
+    image_path = "task4output_E.png" 
+    image_path2 = "task4output_F.png"  
     annotation_file = "HyperBlood/anno/E_1.npz" 
-    annotation_file2 = r"HyperBlood\anno\B_1.npz"  
+    annotation_file2 = r"HyperBlood\anno\F_1.npz"  
 
     # Load the image and annotations
     image = np.array(Image.open(image_path))

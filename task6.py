@@ -1,78 +1,104 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Cursor
+from PIL import Image
 
-# Function to load the ground truth annotations from the .npz file
+# Function to load the ground truth annotations from a .npz file
 def load_annotations(annotation_file):
+    """
+    Load the ground truth annotations from a .npz file.
+    """
     data = np.load(annotation_file)
     gt = data['gt']
     return gt
 
-# Function to extract pixel coordinates for a given label
-def extract_coordinates(gt_array, label):
-    """Extract pixel coordinates for a given label."""
-    return np.argwhere(gt_array == label)
-
 # Function to allow the user to select two pixels
-def pixel_selection(image, title):
+def pixel_selection(image, title, gt_array):
+    """
+    Displays an image with annotations and allows the user to select two pixels.
+    Identifies whether the selected pixels are real or fake blood.
+    """
     fig, ax = plt.subplots(figsize=(8, 8))
     ax.set_title(title)
     ax.imshow(image)
-    cursor = Cursor(ax, useblit=True, color='red', linewidth=2)
 
+    # Create masks for real and fake blood
+    real_blood_mask = (gt_array == 1)
+    fake_blood_mask = (gt_array == 2)
+
+    # Plot real blood regions in green
+    if real_blood_mask.any():
+        real_contour = ax.contour(real_blood_mask, levels=[0.5], colors='green', linewidths=2)
+
+    # Plot fake blood regions in blue
+    if fake_blood_mask.any():
+        fake_contour = ax.contour(fake_blood_mask, levels=[0.5], colors='blue', linewidths=2)
     selected_points = []
 
     # Function to handle mouse clicks
     def onclick(event):
         if event.inaxes == ax:
             x, y = int(event.xdata), int(event.ydata)
-            selected_points.append((x, y))
-            ax.plot(x, y, 'ro')  # Mark the selected point
+            label = "Unknown"
+            if real_blood_mask[y, x]:
+                label = "Real Blood"
+            elif fake_blood_mask[y, x]:
+                label = "Fake Blood"
+            selected_points.append((x, y, label))
+            ax.plot(x, y, 'ro', label=label)  # Mark the selected point
             fig.canvas.draw()
 
             if len(selected_points) == 2:  # Stop after 2 points
                 plt.close(fig)
 
     fig.canvas.mpl_connect('button_press_event', onclick)
-    plt.show()
 
+    # Add a legend manually
+    from matplotlib.lines import Line2D
+    legend_elements = [
+        Line2D([0], [0], color='green', lw=2, label='Real Blood'),
+        Line2D([0], [0], color='blue', lw=2, label='Fake Blood'),
+        Line2D([0], [0], marker='o', color='red', lw=0, markersize=5, label='Selected Point')
+    ]
+    ax.legend(handles=legend_elements, loc='upper right')
+
+    plt.show()
     return selected_points
 
-# Function to visualize the annotations and selected points
-def visualize_annotations(image, gt_array, selected_points):
-    # Extract real and fake blood coordinates
-    real_blood_coords = extract_coordinates(gt_array, label=1)
-    fake_blood_coords = extract_coordinates(gt_array, label=2)
+# Function to visualize the reflectance spectra of selected pixels
+def visualize_reflectance(image, selected_points):
+    """
+    Visualizes the reflectance spectra of the selected pixels.
+    Labels the spectra based on whether the pixel is real or fake blood.
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.set_title("Reflectance Spectra of Selected Pixels")
+    ax.set_xlabel("Spectral Band")
+    ax.set_ylabel("Reflectance")
 
-    fig, ax = plt.subplots(figsize=(8, 8))
-    ax.set_title("Real and Fake Blood Visualization")
-    ax.imshow(image)
+    max_intensity = np.max(image, axis=(0, 1))  # Compute max intensity for normalization across all pixels
 
-    # Plot real blood in green
-    if real_blood_coords.size > 0:
-        ax.scatter(real_blood_coords[:, 1], real_blood_coords[:, 0], c='green', s=10, label='Real Blood')
-
-    # Plot fake blood in blue
-    if fake_blood_coords.size > 0:
-        ax.scatter(fake_blood_coords[:, 1], fake_blood_coords[:, 0], c='blue', s=10, label='Fake Blood')
-
-    # Plot selected points in red
-    for x, y in selected_points:
-        ax.plot(x, y, 'ro', label='Selected Point' if 'Selected Point' not in ax.get_legend_handles_labels()[1] else "")
+    for i, (x, y, label) in enumerate(selected_points):
+        spectra = image[y, x, :]  # Extract all bands for the pixel
+        reflectance = spectra / max_intensity  # Normalize to obtain reflectance
+        ax.plot(range(len(reflectance)), reflectance, marker='o', label=f'Pixel {i+1} ({label})')
 
     ax.legend()
     plt.show()
 
-# Define the paths to the RGB image and annotation file
-rgb_image_path = "task4_output_img.png"  
-annotation_file = "HyperBlood/anno/B_1.npz"  
+# Image and annotations files
+image_path = "task4output_B.png" 
+annotation_file = r"HyperBlood\anno\B_1.npz"
 
-# Load the RGB image and ground truth annotations
-rgb_image = plt.imread(rgb_image_path)
+# Load the image and annotations
+image = np.array(Image.open(image_path))
 gt_array = load_annotations(annotation_file)
 
-# Step 1: Select two pixels
-selected_pixels = pixel_selection(rgb_image, "Select Two Pixels")
+# Verify the number of bands
+print(f"Image shape: {image.shape}")
 
-# Step 2: Visualize annotations and selected pixels
-visualize_annotations(rgb_image, gt_array, selected_pixels)
+# Step 1: Select two pixels with annotations visualized
+selected_pixels = pixel_selection(image, "Select Two Pixels", gt_array)
+
+# Step 2: Visualize the reflectance spectra of the selected pixels
+visualize_reflectance(image, selected_pixels)
