@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+from task9 import main as task9
 
 def load_annotations(annotation_file):
     """
@@ -74,12 +75,8 @@ image2 = np.array(Image.open(image_path2))
 gt_array2 = load_annotations(annotation_file2)
 
 # Example pixel selections (from task9)
-# Replace these with real_pixels and fake_pixels obtained from task9
-real_pixels1 = [(10, 20), (15, 25), (20, 30)]  # Example real blood pixels for image 1
-fake_pixels1 = [(50, 60), (55, 65), (60, 70)]  # Example fake blood pixels for image 1
 
-real_pixels2 = [(12, 22), (17, 27), (22, 32)]  # Example real blood pixels for image 2
-fake_pixels2 = [(52, 62), (57, 67), (62, 72)]  # Example fake blood pixels for image 2
+real_pixels1, fake_pixels1, real_pixels2, fake_pixels2 = task9(image1, gt_array1, image2, gt_array2)
 
 # Plot combined average spectra
 plot_average_spectra(image1, real_pixels1, fake_pixels1, image2, real_pixels2, fake_pixels2)

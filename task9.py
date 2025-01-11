@@ -103,40 +103,45 @@ def plot_collections(image, real_pixels, fake_pixels):
     fig.canvas.mpl_connect('key_press_event', onkey)
     plt.show()
 
-# Define paths to the new scene image and annotations
-image_path = "task4_output_img.png"  # Replace with the path to the new scene image
-image_path2 = "task9_newscene.png"  # Replace with the path to the new scene image
-annotation_file = "HyperBlood/anno/B_1.npz"  # Replace with the new scene's annotation file
-annotation_file2 = r"HyperBlood\anno\D_1.npz"  # Replace with the new scene's annotation file
+def main(image, gt_array, image2, gt_array2):
 
-# Load the image and annotations
-image = np.array(Image.open(image_path))
-gt_array = load_annotations(annotation_file)
+    # Interactive pixel labeling
+    real_pixels, fake_pixels = pixel_labeling(image, gt_array, "Label Real and Fake Blood Pixels")
 
-# Interactive pixel labeling
-real_pixels, fake_pixels = pixel_labeling(image, gt_array, "Label Real and Fake Blood Pixels")
+    # Ensure sufficient labeled pixels
+    if len(real_pixels) < 30 or len(fake_pixels) < 30:
+        print("Please label at least 30 real blood pixels and 30 fake blood pixels.")
+    else:
+        print(f"Labeled {len(real_pixels)} real blood pixels and {len(fake_pixels)} fake blood pixels.")
 
-# Ensure sufficient labeled pixels
-if len(real_pixels) < 30 or len(fake_pixels) < 30:
-    print("Please label at least 30 real blood pixels and 30 fake blood pixels.")
-else:
-    print(f"Labeled {len(real_pixels)} real blood pixels and {len(fake_pixels)} fake blood pixels.")
+    # Plot collections of spectra
+    plot_collections(image, real_pixels, fake_pixels)
 
-# Plot collections of spectra
-plot_collections(image, real_pixels, fake_pixels)
+    # Interactive pixel labeling
+    real_pixels2, fake_pixels2 = pixel_labeling(image2, gt_array2, "Label Real and Fake Blood Pixels")
 
-# Load the image and annotations
-image2 = np.array(Image.open(image_path2))
-gt_array2 = load_annotations(annotation_file2)
+    # Ensure sufficient labeled pixels
+    if len(real_pixels2) < 30 or len(fake_pixels2) < 30:
+        print("Please label at least 30 real blood pixels and 30 fake blood pixels.")
+    else:
+        print(f"Labeled {len(real_pixels2)} real blood pixels and {len(fake_pixels2)} fake blood pixels.")
 
-# Interactive pixel labeling
-real_pixels2, fake_pixels2 = pixel_labeling(image2, gt_array2, "Label Real and Fake Blood Pixels")
+    # Plot collections of spectra
+    plot_collections(image2, real_pixels2, fake_pixels2)
+    return real_pixels, fake_pixels, real_pixels2, fake_pixels2
 
-# Ensure sufficient labeled pixels
-if len(real_pixels2) < 30 or len(fake_pixels2) < 30:
-    print("Please label at least 30 real blood pixels and 30 fake blood pixels.")
-else:
-    print(f"Labeled {len(real_pixels2)} real blood pixels and {len(fake_pixels2)} fake blood pixels.")
+if __name__ == "__main__":
+    # Define paths to the new scene image and annotations
+    image_path = "task4_output_img.png" 
+    image_path2 = "task9_newscene.png"  
+    annotation_file = "HyperBlood/anno/B_1.npz" 
+    annotation_file2 = r"HyperBlood\anno\D_1.npz"  
 
-# Plot collections of spectra
-plot_collections(image2, real_pixels2, fake_pixels2)
+    # Load the image and annotations
+    image = np.array(Image.open(image_path))
+    gt_array = load_annotations(annotation_file)
+
+    # Load the image and annotations
+    image2 = np.array(Image.open(image_path2))
+    gt_array2 = load_annotations(annotation_file2)
+    main(image, gt_array, image2, gt_array2)
