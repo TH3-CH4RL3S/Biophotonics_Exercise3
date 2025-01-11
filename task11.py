@@ -5,7 +5,7 @@ import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import classification_report, confusion_matrix
-
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import json
 import spectral
@@ -22,24 +22,68 @@ def extract_spectra(hsi_cube, real_pixels, fake_pixels):
     fake_labels = [1] * len(fake_spectra)  # Label for fake blood
     return np.array(real_spectra), np.array(fake_spectra), np.array(real_labels), np.array(fake_labels)
 
-def prepare_data(hsi_cube, real_pixels, fake_pixels):
-    real_spectra, fake_spectra, real_labels, fake_labels = extract_spectra(hsi_cube, real_pixels, fake_pixels)
-    X = np.concatenate((real_spectra, fake_spectra), axis=0)
-    y = np.concatenate((real_labels, fake_labels), axis=0)
+def prepare_data(hsi_cube1, real_pixels_1, fake_pixels_1, background_pixels_1, hsi_cube2, real_pixels_2, fake_pixels_2, background_pixels_2):
+    # Extract and concatenate data from multiple cubes
+    real_spectra_1, fake_spectra_1, real_labels_1, fake_labels_1 = extract_spectra(hsi_cube1, real_pixels_1, fake_pixels_1)
+    background_spectra_1 = [hsi_cube1[y, x, :] for x, y in background_pixels_1]
+    background_labels_1 = [2] * len(background_spectra_1)  # Label for background
+
+    real_spectra_2, fake_spectra_2, real_labels_2, fake_labels_2 = extract_spectra(hsi_cube2, real_pixels_2, fake_pixels_2)
+    background_spectra_2 = [hsi_cube2[y, x, :] for x, y in background_pixels_2]
+    background_labels_2 = [2] * len(background_spectra_2)  # Label for background
+
+    # Convert lists to numpy arrays
+    background_spectra_1 = np.array(background_spectra_1)
+    background_spectra_2 = np.array(background_spectra_2)
+
+    # Debug prints to check shapes
+    # print(f"real_spectra_1 shape: {real_spectra_1.shape}")
+    # print(f"fake_spectra_1 shape: {fake_spectra_1.shape}")
+    # print(f"background_spectra_1 shape: {background_spectra_1.shape}")
+    # print(f"real_spectra_2 shape: {real_spectra_2.shape}")
+    # print(f"fake_spectra_2 shape: {fake_spectra_2.shape}")
+    # print(f"background_spectra_2 shape: {background_spectra_2.shape}")
+
+    # Concatenate only non-empty arrays
+    spectra_list = [real_spectra_1, fake_spectra_1, background_spectra_1, real_spectra_2, fake_spectra_2, background_spectra_2]
+    spectra_list = [s for s in spectra_list if s.size > 0]
+    X = np.concatenate(spectra_list, axis=0)
+
+    labels_list = [real_labels_1, fake_labels_1, background_labels_1, real_labels_2, fake_labels_2, background_labels_2]
+    labels_list = [l for l in labels_list if len(l) > 0]
+    y = np.concatenate(labels_list, axis=0)
+
+    # Split and train as usual
     return train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Load the HSI cube
-header_path = 'HyperBlood/data/B_1.hdr'
-data_path = 'HyperBlood/data/B_1.float'
-hsi_cube = load_hsi_cube(header_path, data_path)
+# Load the HSI cubes
+header_paths = ['HyperBlood/data/E_1.hdr', 'HyperBlood/data/B_1.hdr']
+data_paths = ['HyperBlood/data/E_1.float', 'HyperBlood/data/B_1.float']
+hsi_cubes = [load_hsi_cube(header, data) for header, data in zip(header_paths, data_paths)]
 
 # Load the labeled pixels from the JSON file
 with open('labeled_pixels.json', 'r') as f:
     labeled_pixels = json.load(f)
-real_pixels = labeled_pixels['real_pixels']
-fake_pixels = labeled_pixels['fake_pixels']
 
-X_train, X_test, y_train, y_test = prepare_data(hsi_cube, real_pixels, fake_pixels)
+# Map each key's values to the respective real, fake, and background pixel index
+real_pixels_list = []
+fake_pixels_list = []
+background_pixels_list = []
+
+for key in labeled_pixels:
+    real_pixels_list.append(labeled_pixels[key]["real_pixels"])
+    fake_pixels_list.append(labeled_pixels[key]["fake_pixels"])
+    background_pixels_list.append(labeled_pixels[key].get("background_pixels", []))  # Add background pixels if available
+
+# Example: Extract data for the first two entries
+real_pixels1 = real_pixels_list[0]
+fake_pixels1 = fake_pixels_list[0]
+background_pixels1 = background_pixels_list[0]
+real_pixels2 = real_pixels_list[1]
+fake_pixels2 = fake_pixels_list[1]
+background_pixels2 = background_pixels_list[1]
+
+X_train, X_test, y_train, y_test = prepare_data(hsi_cubes[0], real_pixels1, fake_pixels1, background_pixels1, hsi_cubes[1], real_pixels2, fake_pixels2, background_pixels2)
 
 class HSIClassifier(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -55,9 +99,9 @@ class HSIClassifier(nn.Module):
         return out
 
 # Hyperparameters
-input_size = hsi_cube.shape[2]
+input_size = hsi_cubes[0].shape[2]  # Assuming all cubes have the same number of spectral bands
 hidden_size = 128
-output_size = 2  # Three classes: blood, fake blood
+output_size = 3  # Three classes: real blood, fake blood, background
 learning_rate = 0.001
 
 # Instantiate the model, define the loss function and the optimizer
@@ -72,7 +116,7 @@ X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
 y_test_tensor = torch.tensor(y_test, dtype=torch.long).view(-1)  # Ensure y_test_tensor is 1D
 
 # Training loop
-num_epochs = 100
+num_epochs = 10000
 for epoch in range(num_epochs):
     model.train()
     optimizer.zero_grad()
@@ -127,47 +171,46 @@ with torch.no_grad():
 # Reshape the predicted labels to the original image dimensions
 new_predicted_labels = new_predicted_labels.numpy().reshape(height, width)
 
-# import matplotlib.colors as mcolors
-
-# # Define the class labels
-# class_labels = ['Fake Blood', 'Real Blood']
-
-# # Create a custom color map
-# cmap = mcolors.ListedColormap(['blue', 'red'])
-# bounds = [0, 1, 2]
-# norm = mcolors.BoundaryNorm(bounds, cmap.N)
-
-# # Visualize the classification result
-# plt.figure(figsize=(10, 10))
-# plt.imshow(new_predicted_labels, cmap=cmap, norm=norm)
-# plt.title('Classification Result')
-# cbar = plt.colorbar(ticks=[0.5, 1.5])
-# cbar.ax.set_yticklabels(class_labels[::-1])  # Reverse the class labels to match the color order
-# cbar.set_label('Class Labels')
-# plt.show()
 
 # Flatten predictions and true labels
 preds = predicted.flatten().numpy()
 labels = y_test_tensor.flatten().numpy()
 
 # Print a classification report
-print(classification_report(labels, preds, target_names=["Fake Blood", "Real Blood"]))
+print(classification_report(labels, preds, target_names=["Fake Blood", "Real Blood", "Background"]))
 
 # Print a confusion matrix
 cm = confusion_matrix(labels, preds)
 print("Confusion Matrix:\n", cm)
 print(
     "Explanation of the confusion matrix:\n"
-    "For binary classification (Fake Blood vs. Real Blood):\n"
+    "For three-class classification (Fake Blood, Real Blood, Background):\n"
     "  - cm[0,0]: True Negatives (Fake Blood correctly classified)\n"
     "  - cm[0,1]: False Positives (Fake Blood misclassified as Real Blood)\n"
+    "  - cm[0,2]: False Positives (Fake Blood misclassified as Background)\n"
     "  - cm[1,0]: False Negatives (Real Blood misclassified as Fake Blood)\n"
-    "  - cm[1,1]: True Positives (Real Blood correctly classified)"
+    "  - cm[1,1]: True Positives (Real Blood correctly classified)\n"
+    "  - cm[1,2]: False Positives (Real Blood misclassified as Background)\n"
+    "  - cm[2,0]: False Negatives (Background misclassified as Fake Blood)\n"
+    "  - cm[2,1]: False Negatives (Background misclassified as Real Blood)\n"
+    "  - cm[2,2]: True Positives (Background correctly classified)"
 )
+
+# Plot the confusion matrix
+# Define the class labels
+class_labels = ['Fake Blood', 'Real Blood', 'Background']
+
+# Create a custom color map
+cmap = mcolors.ListedColormap(['blue', 'red', 'green'])
+bounds = [0, 1, 2, 3]
+norm = mcolors.BoundaryNorm(bounds, cmap.N)
 
 # Visualize the classification result
 plt.figure(figsize=(10, 10))
-plt.imshow(new_predicted_labels, cmap='viridis')
+plt.imshow(new_predicted_labels, cmap=cmap, norm=norm)
 plt.title('Classification Result')
-plt.colorbar()
+cbar = plt.colorbar(ticks=[0.5, 1.5, 2.5])
+cbar.ax.set_yticklabels(class_labels)  # Label the colorbar with class labels
+cbar.set_label('Class Labels')
 plt.show()
+

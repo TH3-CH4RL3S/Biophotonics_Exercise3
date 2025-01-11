@@ -17,7 +17,7 @@ def pixel_labeling(image, gt_array, title):
     Interactive UI to label pixels as 'real' or 'fake' blood with annotations overlay.
     """
     fig, ax = plt.subplots(figsize=(10, 10))
-    ax.set_title(f"{title}\nLeft click = Real Blood, Right click = Fake Blood\nPress 'Enter' to proceed")
+    ax.set_title(f"{title}\nLeft click = Real Blood, Right click = Fake Blood, Middle click = Background\nPress 'Enter' to proceed")
     ax.imshow(image)
 
     # Create masks for real and fake blood
@@ -36,19 +36,23 @@ def pixel_labeling(image, gt_array, title):
 
     real_pixels = []
     fake_pixels = []
+    background_pixels = []
 
     # Function to handle mouse clicks
     def onclick(event):
         if event.inaxes == ax:
             x, y = int(event.xdata), int(event.ydata)
 
-            # Left-click for 'real blood', Right-click for 'fake blood'
+            # Left-click for 'real blood', Right-click for 'fake blood', Middle-click for 'background'
             if event.button == 1:  # Left-click
                 real_pixels.append((x, y))
                 ax.plot(x, y, 'go')  # Mark with green for 'real'
             elif event.button == 3:  # Right-click
                 fake_pixels.append((x, y))
                 ax.plot(x, y, 'bo')  # Mark with blue for 'fake'
+            elif event.button == 2:  # Middle-click
+                background_pixels.append((x, y))
+                ax.plot(x, y, 'yo')  # Mark with yellow for 'background'
 
             fig.canvas.draw()
 
@@ -66,12 +70,13 @@ def pixel_labeling(image, gt_array, title):
         Line2D([0], [0], color='green', lw=2, label='Real Blood (Annotation)'),
         Line2D([0], [0], color='blue', lw=2, label='Fake Blood (Annotation)'),
         Line2D([0], [0], marker='o', color='green', lw=0, markersize=10, label='Real Blood (User)'),
-        Line2D([0], [0], marker='o', color='blue', lw=0, markersize=10, label='Fake Blood (User)')
+        Line2D([0], [0], marker='o', color='blue', lw=0, markersize=10, label='Fake Blood (User)'),
+        Line2D([0], [0], marker='o', color='yellow', lw=0, markersize=10, label='Background (User)')
     ]
     ax.legend(handles=legend_elements, loc='upper right')
 
     plt.show()
-    return real_pixels, fake_pixels
+    return real_pixels, fake_pixels, background_pixels
 
 def plot_collections(image, real_pixels, fake_pixels):
     """
@@ -104,10 +109,29 @@ def plot_collections(image, real_pixels, fake_pixels):
     fig.canvas.mpl_connect('key_press_event', onkey)
     plt.show()
 
-def main(image, gt_array, image2, gt_array2):
+def save_labeled_pixels(anno_file1, real_pixels1, fake_pixels1, background_pixels1, anno_file2, real_pixels2, fake_pixels2, background_pixels2, output_json):
+    labeled_pixels = {
+        anno_file1: {
+            'real_pixels': real_pixels1,
+            'fake_pixels': fake_pixels1,
+            'background_pixels': background_pixels1
+        },
+        anno_file2: {
+            'real_pixels': real_pixels2,
+            'fake_pixels': fake_pixels2,
+            'background_pixels': background_pixels2
+        }
+    }
+
+    with open(output_json, 'w') as f:
+        json.dump(labeled_pixels, f, indent=4)
+
+    print(f"Labeled pixels saved to {output_json} with separate entries for {anno_file1} and {anno_file2}.")
+
+def main(image, gt_array, image2, gt_array2, annofile1, annofile2):
 
     # Interactive pixel labeling
-    real_pixels, fake_pixels = pixel_labeling(image, gt_array, "Label Real and Fake Blood Pixels")
+    real_pixels, fake_pixels, background_pixels = pixel_labeling(image, gt_array, "Label Real and Fake Blood Pixels")
 
     # Ensure sufficient labeled pixels
     if len(real_pixels) < 30 or len(fake_pixels) < 30:
@@ -119,7 +143,7 @@ def main(image, gt_array, image2, gt_array2):
     plot_collections(image, real_pixels, fake_pixels)
 
     # Interactive pixel labeling
-    real_pixels2, fake_pixels2 = pixel_labeling(image2, gt_array2, "Label Real and Fake Blood Pixels")
+    real_pixels2, fake_pixels2, background_pixels2 = pixel_labeling(image2, gt_array2, "Label Real and Fake Blood Pixels")
 
     # Ensure sufficient labeled pixels
     if len(real_pixels2) < 30 or len(fake_pixels2) < 30:
@@ -130,26 +154,17 @@ def main(image, gt_array, image2, gt_array2):
     # Plot collections of spectra
     plot_collections(image2, real_pixels2, fake_pixels2)
 
-    # Combine the pixel lists
-    combined_real_pixels = real_pixels + real_pixels2
-    combined_fake_pixels = fake_pixels + fake_pixels2
+    # Save labeled pixels to a JSON file
+    save_labeled_pixels(annofile1, real_pixels, fake_pixels, background_pixels, annofile2, real_pixels2, fake_pixels2, background_pixels2, 'labeled_pixels.json')
 
-    # Save the combined labeled pixels to a JSON file
-    labeled_pixels = {
-        'real_pixels': combined_real_pixels,
-        'fake_pixels': combined_fake_pixels
-    }
-    with open('labeled_pixels.json', 'w') as f:
-        json.dump(labeled_pixels, f)
-
-    return real_pixels, fake_pixels, real_pixels2, fake_pixels2
+    return real_pixels, fake_pixels, background_pixels, real_pixels2, fake_pixels2, background_pixels2
 
 if __name__ == "__main__":
     # Define paths to the new scene image and annotations
-    image_path = "task4_output_img.png" 
-    image_path2 = "task9_newscene.png"  
-    annotation_file = "HyperBlood/anno/B_1.npz" 
-    annotation_file2 = r"HyperBlood\anno\D_1.npz"  
+    image_path = "task11_training.png" 
+    image_path2 = "task4_output_img.png"  
+    annotation_file = "HyperBlood/anno/E_1.npz" 
+    annotation_file2 = r"HyperBlood\anno\B_1.npz"  
 
     # Load the image and annotations
     image = np.array(Image.open(image_path))
@@ -158,4 +173,4 @@ if __name__ == "__main__":
     # Load the image and annotations
     image2 = np.array(Image.open(image_path2))
     gt_array2 = load_annotations(annotation_file2)
-    main(image, gt_array, image2, gt_array2)
+    main(image, gt_array, image2, gt_array2, annotation_file, annotation_file2)

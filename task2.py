@@ -30,9 +30,9 @@ def show_spectral_bands(hsi_cube, bands):
         plt.title(f'Spectral Band {band_index}')
     plt.show()
 
-header_path = 'HyperBlood/data/D_1.hdr'
-data_path = 'HyperBlood/data/D_1.float'  # Specify the data file path if needed
-output_dir = 'output_images2'
+header_path = 'HyperBlood/data/E_1.hdr'
+data_path = 'HyperBlood/data/E_1.float'  # Specify the data file path if needed
+output_dir = 'output_images3'
 
 hsi_cube = load_hsi_cube(header_path, data_path)
 save_spectral_bands_as_images(hsi_cube, output_dir)

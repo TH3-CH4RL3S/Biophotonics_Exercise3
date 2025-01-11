@@ -45,7 +45,7 @@ def hyperspectral_to_rgb(hsi_data, wavelengths, save_path=None):
 
     return rgb
 
-output_dir = 'output_images2'
+output_dir = 'output_images3'
 
 # Load the uploaded band images
 band_files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.png')]
@@ -61,5 +61,5 @@ example_wavelengths = [450, 500, 550, 600, 650]
 rgb_image = hyperspectral_to_rgb(hsi_data, example_wavelengths)
 
 # Save and display the RGB image
-output_path = "task9_newscene.png"
+output_path = "task11_training.png"
 Image.fromarray((rgb_image * 255).astype(np.uint8)).save(output_path)
